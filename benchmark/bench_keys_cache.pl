@@ -7,7 +7,7 @@ use Benchmark qw(:all);
 
 my $source     = XML::LibXML->load_xml(string => '<root/>');
 my $xsltproc   = XML::LibXSLT::Processor->new();
-my $id         = 'id50000';
+my $id         = 'id5000';
 
 print "First run:\n";
 timethese(1, {
