@@ -1,0 +1,27 @@
+TYPEMAP
+xsltp_t        * T_PROCESSOR
+xsltp_result_t * T_RESULT
+
+INPUT
+T_PROCESSOR
+    if (sv_isa($arg, \"XML::LibXSLT::Processor\")) {
+        IV tmp = SvIV((SV *) SvRV($arg));
+        $var = INT2PTR(xsltp_t *, tmp);
+    } else
+        Perl_croak(aTHX_ \"%s: %s is not of type XML::LibXSLT::Processor\",
+            ${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+            \"$var\")
+T_RESULT
+    if (sv_isa($arg, \"XML::LibXSLT::Processor::Result\")) {
+        IV tmp = SvIV((SV *) SvRV($arg));
+        $var = INT2PTR(xsltp_result_t *, tmp);
+    } else
+        Perl_croak(aTHX_ \"%s: %s is not of type XML::LibXSLT::Processor::Result\",
+            ${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+            \"$var\")
+
+OUTPUT
+T_PROCESSOR
+    sv_setref_pv($arg, \"XML::LibXSLT::Processor\", (void *) $var);
+T_RESULT
+    sv_setref_pv($arg, \"XML::LibXSLT::Processor::Result\", (void *) $var);
