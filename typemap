@@ -1,6 +1,6 @@
 TYPEMAP
-xsltp_t        * T_PROCESSOR
-xsltp_result_t * T_RESULT
+xsltp_t         * T_PROCESSOR
+TransformResult * T_TRANSFORM_RESULT
 
 INPUT
 T_PROCESSOR
@@ -11,10 +11,10 @@ T_PROCESSOR
         Perl_croak(aTHX_ \"%s: %s is not of type XML::LibXSLT::Processor\",
             ${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
             \"$var\")
-T_RESULT
+T_TRANSFORM_RESULT
     if (sv_isa($arg, \"XML::LibXSLT::Processor::Result\")) {
         IV tmp = SvIV((SV *) SvRV($arg));
-        $var = INT2PTR(xsltp_result_t *, tmp);
+        $var = INT2PTR(TransformResult *, tmp);
     } else
         Perl_croak(aTHX_ \"%s: %s is not of type XML::LibXSLT::Processor::Result\",
             ${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
@@ -23,5 +23,5 @@ T_RESULT
 OUTPUT
 T_PROCESSOR
     sv_setref_pv($arg, \"XML::LibXSLT::Processor\", (void *) $var);
-T_RESULT
+T_TRANSFORM_RESULT
     sv_setref_pv($arg, \"XML::LibXSLT::Processor::Result\", (void *) $var);

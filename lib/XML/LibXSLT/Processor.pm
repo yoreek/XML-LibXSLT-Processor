@@ -5,7 +5,7 @@ use strict;
 no strict 'refs';
 use warnings;
 
-our $VERSION = '1.0';
+our $VERSION = '1.1';
 
 require XSLoader;
 XSLoader::load('XML::LibXSLT::Processor', $VERSION);

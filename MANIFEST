@@ -1,7 +1,13 @@
+.gitmodules
+benchmark/bench_document_cache.pl
+benchmark/bench_keys_cache.pl
+benchmark/bench_transform.pl
+benchmark/big.xml
+benchmark/document.xsl
 benchmark/search.xml
 benchmark/search.xsl
-benchmark/test.xml
-benchmark/xsltp_bench.pl
+benchmark/small.xml
+benchmark/test.xsl
 Changes
 lib/XML/LibXSLT/Processor.pm
 LICENSE
@@ -13,6 +19,7 @@ Processor.xs
 README
 t/00-load.t
 t/01-transform.t
+t/02-destroy-processor-when-result-is-using.t
 t/files/test1.xml
 t/files/test1.xsl
 typemap

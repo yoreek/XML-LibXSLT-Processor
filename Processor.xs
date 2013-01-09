@@ -19,6 +19,12 @@ struct _TransformCtxt {
 };
 typedef struct _TransformCtxt TransformCtxt;
 
+struct _TransformResult {
+    SV             *processor;
+    xsltp_result_t *result;
+};
+typedef struct _TransformResult TransformResult;
+
 #define Pmm_NO_PSVI 0
 #define Pmm_PSVI_TAINTED 1
 
@@ -168,6 +174,14 @@ MODULE = XML::LibXSLT::Processor PACKAGE = XML::LibXSLT::Processor
 
 PROTOTYPES: DISABLE
 
+BOOT:
+    xsltp_global_init();
+
+void
+END()
+    CODE:
+        xsltp_global_cleanup();
+
 xsltp_t *
 new(class = "XML::LibXSLT::Processor", ...)
         char *class;
@@ -181,54 +195,64 @@ new(class = "XML::LibXSLT::Processor", ...)
             croak("Malloc error in new()");
         }
 
-        /* parse parameters */
-        if (items > 1) {
-            if ((items - 1) % 2 != 0) {
-                croak("Odd parameters in new()");
-            }
-            for (i = 1; i < items; i = i + 2) {
-                if (!SvOK(ST(i))) {
-                    croak("Parameter name is undefined");
+        dXCPT;
+        XCPT_TRY_START
+        {
+            /* parse parameters */
+            if (items > 1) {
+                if ((items - 1) % 2 != 0) {
+                    croak("Odd number of parameters in new()");
                 }
+                for (i = 1; i < items; i = i + 2) {
+                    if (!SvOK(ST(i))) {
+                        croak("Parameter name is undefined");
+                    }
 
-                p = (char *) SvPV(ST(i), PL_na);
-                v = ST(i + 1);
-                if (!SvOK(v)) {
-                    croak("Parameter '%s' is undefined", p);
-                }
+                    p = (char *) SvPV(ST(i), PL_na);
+                    v = ST(i + 1);
+                    if (!SvOK(v)) {
+                        croak("Parameter '%s' is undefined", p);
+                    }
 
-                if (strcmp(p, "stylesheet_max_depth") == 0) {
-                    processor->stylesheet_max_depth = SvIV(v);
-                }
-                else if (strcmp(p, "stylesheet_caching_enable") == 0) {
-                    processor->stylesheet_caching_enable = SvIV(v);
-                }
-                else if (strcmp(p, "document_caching_enable") == 0) {
-                    processor->document_caching_enable = SvIV(v);
-                }
-                else if (strcmp(p, "keys_caching_enable") == 0) {
-                    processor->keys_caching_enable = SvIV(v);
-                }
-                else if (strcmp(p, "profiler_enable") == 0) {
-                    processor->profiler_enable = SvIV(v);
-                }
-                else if (strcmp(p, "profiler_stylesheet") == 0) {
-                    processor->profiler_stylesheet = SvPV_nolen(v);
-                }
-                else if (strcmp(p, "profiler_repeat") == 0) {
-                    processor->profiler_repeat = SvIV(v);
-                }
-                else {
-                    croak("Invalid parameter '%s'", p);
+                    if (strcmp(p, "stylesheet_max_depth") == 0) {
+                        processor->stylesheet_max_depth = SvIV(v);
+                    }
+                    else if (strcmp(p, "stylesheet_caching_enable") == 0) {
+                        processor->stylesheet_caching_enable = SvIV(v);
+                    }
+                    else if (strcmp(p, "document_caching_enable") == 0) {
+                        processor->document_caching_enable = SvIV(v);
+                    }
+                    else if (strcmp(p, "keys_caching_enable") == 0) {
+                        processor->keys_caching_enable = SvIV(v);
+                    }
+                    else if (strcmp(p, "profiler_enable") == 0) {
+                        processor->profiler_enable = SvIV(v);
+                    }
+                    else if (strcmp(p, "profiler_stylesheet") == 0) {
+                        processor->profiler_stylesheet = SvPV_nolen(v);
+                    }
+                    else if (strcmp(p, "profiler_repeat") == 0) {
+                        processor->profiler_repeat = SvIV(v);
+                    }
+                    else {
+                        croak("Invalid parameter '%s'", p);
+                    }
                 }
             }
+        } XCPT_TRY_END
+
+        XCPT_CATCH
+        {
+            xsltp_destroy(processor);
+            XCPT_RETHROW;
         }
 
         RETVAL = processor;
     OUTPUT:
         RETVAL
 
-xsltp_result_t *
+TransformResult *
 transform(processor, xml, ...)
         xsltp_t            *processor;
         SV                 *xml;
@@ -237,6 +261,7 @@ transform(processor, xml, ...)
         int                 keylen, i, last_param, len;
         STRLEN              buf_len;
         TransformCtxt       transforms[MAX_TRANSFORMATIONS + 1];
+        TransformResult    *transform_result;
         SV                 *params, *value;
         HV                 *hv;
         xmlDocPtr           xml_doc, tmp_doc = NULL;
@@ -336,7 +361,17 @@ transform(processor, xml, ...)
             xmlFreeDoc(tmp_doc);
         }
 
-        RETVAL = result;
+        transform_result = malloc(sizeof(TransformResult));
+        if (transform_result == NULL) {
+            xsltp_result_destroy(result);
+            croak("Malloc error in transform()");
+        }
+
+        transform_result->result = result;
+        transform_result->processor = (void *) SvRV(ST(0));
+        SvREFCNT_inc(transform_result->processor);
+
+        RETVAL = transform_result;
     OUTPUT:
         RETVAL
 
@@ -351,14 +386,17 @@ MODULE = XML::LibXSLT::Processor PACKAGE = XML::LibXSLT::Processor::Result
 PROTOTYPES: DISABLE
 
 SV *
-output_string(result)
-        xsltp_result_t     *result;
+output_string(transform_result)
+        TransformResult    *transform_result;
     PREINIT:
+        xsltp_result_t     *result;
         SV                 *results;
         xmlOutputBufferPtr  output;
         const xmlChar      *encoding = NULL;
         xmlCharEncodingHandlerPtr encoder = NULL;
     CODE:
+        result = transform_result->result;
+
         XSLT_GET_IMPORT_PTR(encoding, result->xsltp_stylesheet->stylesheet, encoding)
         if (encoding != NULL) {
             encoder = xmlFindCharEncodingHandler((char *)encoding);
@@ -385,10 +423,11 @@ output_string(result)
         RETVAL
 
 void
-output_fh(result, fh)
-        xsltp_result_t     *result;
+output_fh(transform_result, fh)
+        TransformResult    *transform_result;
         void               *fh;
     PREINIT:
+        xsltp_result_t            *result;
         xmlOutputBufferPtr         output;
         const xmlChar             *encoding = NULL;
         xmlCharEncodingHandlerPtr  encoder = NULL;
@@ -398,6 +437,8 @@ output_fh(result, fh)
         GV                        *gv = (GV *)fh;
         IO                        *io = GvIO(gv);
     CODE:
+        result = transform_result->result;
+
         XSLT_GET_IMPORT_PTR(encoding, result->xsltp_stylesheet->stylesheet, encoding)
         if (encoding != NULL) {
             encoder = xmlFindCharEncodingHandler((char *)encoding);
@@ -438,16 +479,22 @@ output_fh(result, fh)
         xmlOutputBufferClose(output);
 
 void
-output_file(result, filename)
-        xsltp_result_t     *result;
+output_file(transform_result, filename)
+        TransformResult    *transform_result;
         char               *filename;
+    PREINIT:
+        xsltp_result_t     *result;
     CODE:
+        result = transform_result->result;
+
         if (xsltp_result_save_to_file(result, filename) == -1) {
             croak("Output to file failed");
         }
 
 void
-DESTROY(result)
-        xsltp_result_t *result;
+DESTROY(transform_result)
+        TransformResult    *transform_result;
     CODE:
-        xsltp_result_destroy(result);
+        xsltp_result_destroy(transform_result->result);
+        SvREFCNT_dec(transform_result->processor);
+        free(transform_result);

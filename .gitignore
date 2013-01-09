@@ -7,7 +7,7 @@
 *.obj
 *.bs
 *.bak
-XS.c
+Processor.c
 
 blib/
 .build/

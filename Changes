@@ -1,2 +1,5 @@
+1.1		2013-01-10
+		Fixed bug: segfault when destroy processor and result is using
+
 1.0     2013-01-06
         First version
