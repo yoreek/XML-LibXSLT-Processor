@@ -10,15 +10,6 @@
 
 #include <libxslt/imports.h>
 
-#define MAX_TRANSFORMATIONS        16
-#define MAX_TRANSFORMATIONS_PARAMS 254
-
-struct _TransformCtxt {
-    char *stylesheet;
-    char *params[MAX_TRANSFORMATIONS_PARAMS + 1];
-};
-typedef struct _TransformCtxt TransformCtxt;
-
 struct _TransformResult {
     SV             *processor;
     xsltp_result_t *result;
@@ -69,6 +60,9 @@ typedef DocProxyNode* DocProxyNodePtr;
 
 #define x_PmmSvNode(n) x_PmmSvNodeExt(n,1)
 
+#define x_PmmUSEREGISTRY		(x_PROXY_NODE_REGISTRY_MUTEX != NULL)
+#define x_PmmREGISTRY		(INT2PTR(xmlHashTablePtr,SvIV(SvRV(get_sv("XML::LibXML::__PROXY_NODE_REGISTRY",0)))))
+
 ProxyNodePtr
 x_PmmNewNode(xmlNodePtr node);
 
@@ -90,6 +84,54 @@ x_PmmNodeToSv( xmlNodePtr node, ProxyNodePtr owner );
 #else
 #define xs_warn(string)
 #endif
+
+SV* x_PROXY_NODE_REGISTRY_MUTEX = NULL;
+
+const char*
+x_PmmNodeTypeName( xmlNodePtr elem ){
+    const char *name = "XML::LibXML::Node";
+
+    if ( elem != NULL ) {
+        switch ( elem->type ) {
+        case XML_ELEMENT_NODE:
+            name = "XML::LibXML::Element";
+            break;
+        case XML_TEXT_NODE:
+            name = "XML::LibXML::Text";
+            break;
+        case XML_COMMENT_NODE:
+            name = "XML::LibXML::Comment";
+            break;
+        case XML_CDATA_SECTION_NODE:
+            name = "XML::LibXML::CDATASection";
+            break;
+        case XML_ATTRIBUTE_NODE:
+            name = "XML::LibXML::Attr";
+            break;
+        case XML_DOCUMENT_NODE:
+        case XML_HTML_DOCUMENT_NODE:
+            name = "XML::LibXML::Document";
+            break;
+        case XML_DOCUMENT_FRAG_NODE:
+            name = "XML::LibXML::DocumentFragment";
+            break;
+        case XML_NAMESPACE_DECL:
+            name = "XML::LibXML::Namespace";
+            break;
+        case XML_DTD_NODE:
+            name = "XML::LibXML::Dtd";
+            break;
+        case XML_PI_NODE:
+            name = "XML::LibXML::PI";
+            break;
+        default:
+            name = "XML::LibXML::Node";
+            break;
+        };
+        return name;
+    }
+    return "";
+}
 
 /* extracts the libxml2 node from a perl reference
  */
@@ -115,6 +157,116 @@ x_PmmSvNodeExt( SV* perlnode, int copy )
                 retval = NULL;
             }
         }
+    }
+
+    return retval;
+}
+
+ProxyNodePtr
+x_PmmNewNode(xmlNodePtr node)
+{
+    ProxyNodePtr proxy = NULL;
+
+    if ( node == NULL ) {
+        xs_warn( "x_PmmNewNode: no node found\n" );
+        return NULL;
+    }
+
+    if ( node->_private == NULL ) {
+        switch ( node->type ) {
+        case XML_DOCUMENT_NODE:
+        case XML_HTML_DOCUMENT_NODE:
+        case XML_DOCB_DOCUMENT_NODE:
+            proxy = (ProxyNodePtr)xmlMalloc(sizeof(struct _DocProxyNode));
+            if (proxy != NULL) {
+                ((DocProxyNodePtr)proxy)->psvi_status = Pmm_NO_PSVI;
+                x_SetPmmENCODING(proxy, XML_CHAR_ENCODING_NONE);
+            }
+            break;
+        default:
+            proxy = (ProxyNodePtr)xmlMalloc(sizeof(struct _ProxyNode));
+            break;
+        }
+        if (proxy != NULL) {
+            proxy->node  = node;
+            proxy->owner   = NULL;
+            proxy->count   = 0;
+            node->_private = (void*) proxy;
+        }
+    }
+    else {
+        proxy = (ProxyNodePtr)node->_private;
+    }
+
+    return proxy;
+}
+
+SV*
+x_PmmNodeToSv( xmlNodePtr node, ProxyNodePtr owner )
+{
+    ProxyNodePtr dfProxy= NULL;
+    SV * retval = &PL_sv_undef;
+    const char * CLASS = "XML::LibXML::Node";
+
+    if ( node != NULL ) {
+#ifdef XML_LIBXML_THREADS
+      if( x_PmmUSEREGISTRY )
+		SvLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
+#endif
+        /* find out about the class */
+        CLASS = x_PmmNodeTypeName( node );
+        xs_warn("x_PmmNodeToSv: return new perl node of class:\n");
+        xs_warn( CLASS );
+
+        if ( node->_private != NULL ) {
+            dfProxy = x_PmmNewNode(node);
+            /* warn(" at 0x%08.8X\n", dfProxy); */
+        }
+        else {
+            dfProxy = x_PmmNewNode(node);
+            /* fprintf(stderr, " at 0x%08.8X\n", dfProxy); */
+            if ( dfProxy != NULL ) {
+                if ( owner != NULL ) {
+                    dfProxy->owner = x_PmmNODE( owner );
+                    x_PmmREFCNT_inc( owner );
+                    /* fprintf(stderr, "REFCNT incremented on owner: 0x%08.8X\n", owner); */
+                }
+                else {
+                   xs_warn("x_PmmNodeToSv:   node contains itself (owner==NULL)\n");
+                }
+            }
+            else {
+                xs_warn("x_PmmNodeToSv:   proxy creation failed!\n");
+            }
+        }
+
+        retval = NEWSV(0,0);
+        sv_setref_pv( retval, CLASS, (void*)dfProxy );
+#ifdef XML_LIBXML_THREADS
+	if( x_PmmUSEREGISTRY )
+	    x_PmmRegistryREFCNT_inc(dfProxy);
+#endif
+        x_PmmREFCNT_inc(dfProxy);
+        /* fprintf(stderr, "REFCNT incremented on node: 0x%08.8X\n", dfProxy); */
+
+        switch ( node->type ) {
+        case XML_DOCUMENT_NODE:
+        case XML_HTML_DOCUMENT_NODE:
+        case XML_DOCB_DOCUMENT_NODE:
+            if ( ((xmlDocPtr)node)->encoding != NULL ) {
+                x_SetPmmENCODING(dfProxy, (int)xmlParseCharEncoding( (const char*)((xmlDocPtr)node)->encoding ));
+            }
+            break;
+        default:
+            break;
+        }
+#ifdef XML_LIBXML_THREADS
+      if( x_PmmUSEREGISTRY )
+		SvUNLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
+#endif
+    }
+    else {
+        xs_warn( "x_PmmNodeToSv: no node found!\n" );
     }
 
     return retval;
@@ -234,9 +386,19 @@ new(class = "XML::LibXSLT::Processor", ...)
                     }
                     else if (strcmp(p, "profiler_repeat") == 0) {
                         processor->profiler_repeat = SvIV(v);
+                        if (processor->profiler_repeat < 1) {
+                            processor->profiler_repeat = 1;
+                        }
                     }
                     else {
                         croak("Invalid parameter '%s'", p);
+                    }
+                }
+
+                if (processor->profiler_enable) {
+                    processor->profiler = xsltp_profiler_create(processor);
+                    if (processor->profiler == NULL) {
+                        croak("Failed to create profiler");
                     }
                 }
             }
@@ -257,21 +419,21 @@ transform(processor, xml, ...)
         xsltp_t            *processor;
         SV                 *xml;
     PREINIT:
-        char               *buf, *key;
-        int                 keylen, i, last_param, len;
-        STRLEN              buf_len;
-        TransformCtxt       transforms[MAX_TRANSFORMATIONS + 1];
-        TransformResult    *transform_result;
-        SV                 *params, *value;
-        HV                 *hv;
-        xmlDocPtr           xml_doc, tmp_doc = NULL;
-        xsltp_result_t     *result;
+        char                  *buf, *key;
+        int                    keylen, i, last_param, len;
+        STRLEN                 buf_len;
+        xsltp_transform_ctxt_t transform_ctxt[XSLTP_MAX_TRANSFORMATIONS + 1];
+        TransformResult       *transform_result;
+        SV                    *params, *value;
+        HV                    *hv;
+        xmlDocPtr              xml_doc, tmp_doc = NULL;
+        xsltp_result_t        *result;
     CODE:
         /* parse parameters */
         if (items < 3) {
             croak("Not enough parameters in transform()");
         }
-        if (items > (MAX_TRANSFORMATIONS * 2 + 2)) {
+        if (items > (XSLTP_MAX_TRANSFORMATIONS * 2 + 2)) {
             croak("Too many parameters in transform()");
         }
 
@@ -303,8 +465,8 @@ transform(processor, xml, ...)
         }
 
         for (i = 2; i < items; i = i + 2) {
-            transforms[(i - 2) / 2].stylesheet = (char *) SvPV(ST(i), PL_na);
-            transforms[(i - 2) / 2 + 1].stylesheet = 0;
+            transform_ctxt[(i - 2) / 2    ].stylesheet = (char *) SvPV(ST(i), PL_na);
+            transform_ctxt[(i - 2) / 2 + 1].stylesheet = NULL;
 
             last_param = 0;
             if ((i + 1) < items) {
@@ -321,44 +483,31 @@ transform(processor, xml, ...)
 
                     len = HvUSEDKEYS(hv);
                     if (len > 0) {
-                        if (len > (MAX_TRANSFORMATIONS_PARAMS - 1)) {
+                        if (len > (XSLTP_MAX_TRANSFORMATIONS_PARAMS - 1)) {
                             croak("Too many parameters in transform()");
                         }
 
                         hv_iterinit(hv);
                         while ((value = hv_iternextsv(hv, &key, &keylen))) {
-                            transforms[(i - 2) / 2].params[last_param++] = key;
-                            transforms[(i - 2) / 2].params[last_param++] = SvPV_nolen(value);
+                            transform_ctxt[(i - 2) / 2].params[last_param++] = key;
+                            transform_ctxt[(i - 2) / 2].params[last_param++] = SvPV_nolen(value);
                         }
                     }
                 }
             }
 
-            transforms[(i - 2) / 2].params[last_param] = 0;
+            transform_ctxt[(i - 2) / 2].params[last_param] = 0;
         }
 
         /* transform */
-        result = NULL;
-        for (i = 0; i < MAX_TRANSFORMATIONS; i++) {
-            if (transforms[i].stylesheet == 0) {
-                break;
-            }
+        result = xsltp_transform_multi(processor, transform_ctxt, xml_doc);
 
-            if (result != NULL) {
-                xml_doc = result->doc;
-                result->doc = NULL;
-                xsltp_result_destroy(result);
-            }
-
-            result = xsltp_transform(processor, transforms[i].stylesheet,
-                xml_doc, (const char **) transforms[i].params);
-
-            if (result == NULL) {
-                croak("Failed to transform\n");
-            }
-        }
         if (tmp_doc != NULL) {
             xmlFreeDoc(tmp_doc);
+        }
+
+        if (result == NULL) {
+            croak("Failed to transform\n");
         }
 
         transform_result = malloc(sizeof(TransformResult));
@@ -367,7 +516,7 @@ transform(processor, xml, ...)
             croak("Malloc error in transform()");
         }
 
-        transform_result->result = result;
+        transform_result->result    = result;
         transform_result->processor = (void *) SvRV(ST(0));
         SvREFCNT_inc(transform_result->processor);
 
@@ -419,6 +568,27 @@ output_string(transform_result)
         xmlOutputBufferClose(output);
 
         RETVAL = results;
+    OUTPUT:
+        RETVAL
+
+SV *
+profiler_result(transform_result)
+        TransformResult         *transform_result;
+    PREINIT:
+        xsltp_profiler_result_t *profiler_result;
+        xmlDocPtr                doc_copy;
+    CODE:
+        profiler_result = transform_result->result->profiler_result;
+        if (profiler_result == NULL || profiler_result->doc == NULL) {
+            XSRETURN_UNDEF;
+        }
+
+        doc_copy = xmlCopyDoc(profiler_result->doc, 1);
+        if (doc_copy->URL == NULL) {
+          doc_copy->URL = xmlStrdup(profiler_result->doc->URL);
+        }
+
+        RETVAL = x_PmmNodeToSv((xmlNodePtr) doc_copy, NULL);
     OUTPUT:
         RETVAL
 

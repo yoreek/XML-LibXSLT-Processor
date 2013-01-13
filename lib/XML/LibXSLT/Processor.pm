@@ -5,6 +5,8 @@ use strict;
 no strict 'refs';
 use warnings;
 
+use XML::LibXML;
+
 our $VERSION = '1.1';
 
 require XSLoader;
