@@ -60,8 +60,8 @@ typedef DocProxyNode* DocProxyNodePtr;
 
 #define x_PmmSvNode(n) x_PmmSvNodeExt(n,1)
 
-#define x_PmmUSEREGISTRY		(x_PROXY_NODE_REGISTRY_MUTEX != NULL)
-#define x_PmmREGISTRY		(INT2PTR(xmlHashTablePtr,SvIV(SvRV(get_sv("XML::LibXML::__PROXY_NODE_REGISTRY",0)))))
+#define x_PmmUSEREGISTRY       (x_PROXY_NODE_REGISTRY_MUTEX != NULL)
+#define x_PmmREGISTRY          (INT2PTR(xmlHashTablePtr,SvIV(SvRV(get_sv("XML::LibXML::__PROXY_NODE_REGISTRY",0)))))
 
 ProxyNodePtr
 x_PmmNewNode(xmlNodePtr node);
@@ -211,7 +211,7 @@ x_PmmNodeToSv( xmlNodePtr node, ProxyNodePtr owner )
     if ( node != NULL ) {
 #ifdef XML_LIBXML_THREADS
       if( x_PmmUSEREGISTRY )
-		SvLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
+        SvLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
 #endif
         /* find out about the class */
         CLASS = x_PmmNodeTypeName( node );
@@ -243,8 +243,8 @@ x_PmmNodeToSv( xmlNodePtr node, ProxyNodePtr owner )
         retval = NEWSV(0,0);
         sv_setref_pv( retval, CLASS, (void*)dfProxy );
 #ifdef XML_LIBXML_THREADS
-	if( x_PmmUSEREGISTRY )
-	    x_PmmRegistryREFCNT_inc(dfProxy);
+    if( x_PmmUSEREGISTRY )
+        x_PmmRegistryREFCNT_inc(dfProxy);
 #endif
         x_PmmREFCNT_inc(dfProxy);
         /* fprintf(stderr, "REFCNT incremented on node: 0x%08.8X\n", dfProxy); */
@@ -262,7 +262,7 @@ x_PmmNodeToSv( xmlNodePtr node, ProxyNodePtr owner )
         }
 #ifdef XML_LIBXML_THREADS
       if( x_PmmUSEREGISTRY )
-		SvUNLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
+        SvUNLOCK(x_PROXY_NODE_REGISTRY_MUTEX);
 #endif
     }
     else {
@@ -523,6 +523,13 @@ transform(processor, xml, ...)
         RETVAL = transform_result;
     OUTPUT:
         RETVAL
+
+void
+clean(processor)
+        xsltp_t *processor;
+    CODE:
+        xsltp_stylesheet_parser_cache_clean(processor->stylesheet_parser->stylesheet_parser_cache, processor->keys_cache);
+        xsltp_document_parser_cache_clean(processor->document_parser->cache, processor->keys_cache);
 
 void
 DESTROY(processor)

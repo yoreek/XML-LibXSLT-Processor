@@ -1,9 +1,9 @@
-#!/use/bin/perl
+#!/usr/bin/perl
 
 use strict;
 use warnings;
-
-use lib ("./blib/lib", "./blib/arch");
+use FindBin;
+use lib ("$FindBin::Bin/../blib/lib", "$FindBin::Bin/../blib/arch");
 use Test::More tests => 6;
 
 my $class = 'XML::LibXSLT::Processor';
