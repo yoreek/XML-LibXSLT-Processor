@@ -10,6 +10,15 @@ benchmark/search.xsl
 benchmark/small.xml
 benchmark/test.xsl
 Changes
+examples/profiler/gen_index_html.pl
+examples/profiler/index.html
+examples/profiler/node-closed.png
+examples/profiler/node-open.png
+examples/profiler/profiler.css
+examples/profiler/profiler.js
+examples/profiler/profiler.xsl
+examples/profiler/small.xml
+examples/profiler/test.xsl
 lib/XML/LibXSLT/Processor.pm
 LICENSE
 Makefile.PL

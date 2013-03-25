@@ -11,7 +11,7 @@ my $xsltprocNotCached = XML::LibXSLT::Processor->new(keys_caching_enable => 0);
 my $id                = 'id5000';
 
 print "First run:\n";
-timethese(1, {
+cmpthese(1, {
     'Search by key (cached)' => sub {
         my $result = $xsltprocCached->transform($source, 'search.xsl' => {id => "'$id'", use_key => 1});
         #print $result->output_string();
@@ -27,7 +27,7 @@ timethese(1, {
 });
 
 print "\nSecond run:\n";
-timethese(1000, {
+cmpthese(1000, {
     'Search by key (cached)' => sub {
         my $result = $xsltprocCached->transform($source, 'search.xsl' => {id => "'$id'", use_key => 1});
         #print $result->output_string();

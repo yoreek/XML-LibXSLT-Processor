@@ -668,6 +668,18 @@ output_file(transform_result, filename)
             croak("Output to file failed");
         }
 
+SV *
+stylesheet_created(transform_result)
+        TransformResult    *transform_result;
+    PREINIT:
+        xsltp_result_t     *result;
+    CODE:
+        result = transform_result->result;
+
+        RETVAL = newSViv(result->xsltp_stylesheet->created);
+    OUTPUT:
+        RETVAL
+
 void
 DESTROY(transform_result)
         TransformResult    *transform_result;

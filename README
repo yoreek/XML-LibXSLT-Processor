@@ -3,17 +3,102 @@ NAME
     additional features
 
 SYNOPSIS
-        use XML::LibXSLT::Processor;
         use XML::LibXML;
+        use XML::LibXSLT::Processor;
 
         my $xsltproc = XML::LibXSLT::Processor->new();
         my $xml = XML::LibXML->load_xml(location => 'foo.xml');
         my $result = $xsltproc->transform($xml, 'bar.xsl' => { param => 1 });
         print $result->output_string();
 
+    Multi-pass transform:
+
+        my $result = $xsltproc->transform($xml,
+            'style1.xsl' => { param => 1 },
+            'style2.xsl' => { param => 1 },
+            ...
+        );
+
 DESCRIPTION
     This processor caches templates, documents and keys, which leads to the
     acceleration of the transformation, as well as much more.
+
+    Transformation benchmark:
+
+        Test small xml:
+                                   Rate            XML::LibXSLT XML::LibXSLT::Processor
+        XML::LibXSLT            14493/s                      --                    -35%
+        XML::LibXSLT::Processor 22222/s                     53%                      --
+
+        Test big xml:
+                                 Rate            XML::LibXSLT XML::LibXSLT::Processor
+        XML::LibXSLT            823/s                      --                     -3%
+        XML::LibXSLT::Processor 851/s                      3%                      --
+
+    Using the key() function:
+
+        First run:
+                                                 Rate Search by key (not cached) Search by key (cached) Sequential search
+        Search by key (not cached)             20.0/s                         --                   -40%             -100%
+        Search by key (cached)                 33.3/s                        67%                     --             -100%
+        Sequential search                          --                         --                     --                --
+
+        Second run:
+                                      Rate Search by key (not cached) Sequential search Search by key (cached)
+        Search by key (not cached)  31.5/s                         --              -88%                  -100%
+        Sequential search            254/s                       706%                --                   -99%
+        Search by key (cached)     20000/s                     63440%             7780%                     --
+
+    Using the document() function:
+
+                                  Rate XML::LibXSLT Processor (Not cached) Processor (Cached)
+        XML::LibXSLT            7092/s           --                   -32%               -65%
+        Processor (Not cached) 10417/s          47%                     --               -48%
+        Processor (Cached)     20000/s         182%                    92%                 --
+
+    Using profiler:
+
+        my $xsltproc = XML::LibXSLT::Processor->new(
+            profiler_enable => 1,
+            profiler_repeat => 20,
+        );
+        my $result = $xsltproc->transform('t/files/test1.xml',
+            't/files/multi-transform1.xsl' => { pass => "1" },
+            't/files/multi-transform2.xsl' => { pass => "2" },
+        );
+        print $result->profiler_result->toString(2);
+
+        <profiler repeat="20">
+          <stylesheet uri="t/files/multi-transform1.xsl" time="196">
+            <profile>
+              <template rank="1" match="/" name="" mode="" calls="20" time="13" average="0"/>
+            </profile>
+            <document>
+              <root>
+                <pass1>1</pass1>
+              </root>
+            </document>
+            <params>
+              <param name="pass" value="1"/>
+            </params>
+          </stylesheet>
+          <stylesheet uri="t/files/multi-transform2.xsl" time="221">
+            <profile>
+              <template rank="1" match="/" name="" mode="" calls="20" time="21" average="1"/>
+            </profile>
+            <document>
+              <root>
+                <prev_pass>1</prev_pass>
+                <pass2>2</pass2>
+              </root>
+            </document>
+            <params>
+              <param name="pass" value="2"/>
+            </params>
+          </stylesheet>
+        </profiler>
+
+        Example of using profiler you can see in directory "examples/profiler".
 
 METHODS
   new
@@ -103,7 +188,7 @@ METHODS
 
     *   stylesheet
 
-        This parameter can be either a filename or an URL.
+        Stylesheet file name.
 
 AUTHOR
         Yuriy Ustushenko, <<yoreek@yahoo.com>>

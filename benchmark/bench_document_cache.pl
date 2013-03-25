@@ -20,12 +20,12 @@ my $xsltprocCached    = XML::LibXSLT::Processor->new(document_caching_enable => 
 }
 
 cmpthese(10000, {
-    'XML::LibXSLT::Processor (Cached)' => sub {
+    'Processor (Cached)' => sub {
         my $result = $xsltprocCached->transform($source, 'document.xsl');
         my $str = $result->output_string();
         #print $str, "\n";
     },
-    'XML::LibXSLT::Processor (Not cached)' => sub {
+    'Processor (Not cached)' => sub {
         my $result = $xsltprocNotCached->transform($source, 'document.xsl');
         my $str = $result->output_string();
         #print $str, "\n";
