@@ -78,7 +78,7 @@ my %INFO = (
     system("make") == 0
         or die "Can't make libxsltp";
 
-    $libxsltp_config{LIBS} = "-L$libxsltp_build -lxsltp-1.0";
+    $libxsltp_config{LIBS} = "-L$libxsltp_build -lxsltp";
     $libxsltp_config{INC}  = "-I$libxsltp_path";
 
     chdir $start_dir;
