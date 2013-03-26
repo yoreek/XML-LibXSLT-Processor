@@ -420,7 +420,8 @@ transform(processor, xml, ...)
         SV                 *xml;
     PREINIT:
         char                  *buf, *key;
-        int                    keylen, i, last_param, len;
+        int                    i, last_param, len;
+        I32                    keylen;
         STRLEN                 buf_len;
         xsltp_transform_ctxt_t transform_ctxt[XSLTP_MAX_TRANSFORMATIONS + 1];
         TransformResult       *transform_result;

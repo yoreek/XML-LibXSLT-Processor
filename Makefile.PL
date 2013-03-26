@@ -44,6 +44,21 @@ sub build_libxsltp {
     my $libxsltp_path  = File::Spec->catdir($start_dir, 'libxsltp');
     my $libxsltp_build = File::Spec->catdir($libxsltp_path, 'libxsltp', '.libs');
 
+    -e $libxsltp_path or die "Path '$libxsltp_path' is not exists";
+
+    chdir $libxsltp_path;
+
+    if ($DEBUG) {
+        system("./configure --enable-debug") == 0 or die "Can't configure libxsltp";
+    }
+    else {
+        system("./configure") == 0 or die "Can't configure libxsltp";
+    }
+
+    system( $Config{make} ) == 0 or die "Can't build libxsltp";
+
+    chdir $start_dir;
+
     my $makefile;
     open(my $fh, '<', 'libxsltp/libxsltp/Makefile') or die "Can't open make file";
     {
@@ -65,24 +80,7 @@ sub build_libxsltp {
     $CONFIG{LIBS} = join(' ', grep { $_ } ($CONFIG{LIBS}, @vars{qw( LIBXSLT_LIBS THREAD_LIBS OPENSSL_LIBS )}));
     $CONFIG{INC}  = join(' ', grep { $_ } ($CONFIG{INC}, @vars{qw( LIBXSLT_CFLAGS )}, "-I$libxsltp_path"));
 
-    -e $libxsltp_path or die "Path '$libxsltp_path' is not exists";
-
-    chdir $libxsltp_path;
-
-    if ($DEBUG) {
-        system("./configure --enable-debug") == 0 or die "Can't configure libxsltp";
-    }
-    else {
-        system("./configure") == 0 or die "Can't configure libxsltp";
-    }
-
-    system( $Config{make} ) == 0 or die "Can't build libxsltp";
-
-    chdir $start_dir;
-
     $CONFIG{OBJECT} = "Processor.o $libxsltp_build/libxsltp.a";
-    use Data::Dumper;
-    print Dumper \%CONFIG;
 }
 
 

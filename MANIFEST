@@ -18,7 +18,6 @@ examples/profiler/profiler.js
 examples/profiler/profiler.xsl
 examples/profiler/small.xml
 examples/profiler/test.xsl
-inc/Devel/CheckLib.pm
 lib/XML/LibXSLT/Processor.pm
 LICENSE
 Makefile.PL
