@@ -60,6 +60,42 @@
 
 \B\.travis.yml$
 \.o$
-\.c$
+Processor\.c$
 \.bs$
 \.tar\.gz$
+
+# Object files
+\.o$
+
+# Libraries
+\.lib$
+\.a$
+
+# Shared objects (inc. Windows DLLs)
+\.dll$
+\.so$
+\.so\.
+\.dylib
+
+# Executables
+/xslt_processor/xslt_processor$
+\.exe$
+\.out$
+\.app$
+
+Makefile$
+\.\bdeps\b
+\.\blibs\b
+\.la$
+\.lo$
+\.so$
+
+# http://www.gnu.org/software/autoconf
+autom4te.cache$
+config\.log$
+\bconfig\.h$
+config\.status$
+libtool$
+stamp-h$
+stamp-h.in$
+stamp-h1$

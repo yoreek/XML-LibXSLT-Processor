@@ -29,6 +29,8 @@ my $class = 'XML::LibXSLT::Processor';
         't/files/test1.xsl' => { param1 => "'PARAM1_VALUE'" }
     );
     my $new_time = $result->stylesheet_created();
+    my $str = $result->output_string();
+    chomp $str;
 
     is
         $old_time,
@@ -37,7 +39,7 @@ my $class = 'XML::LibXSLT::Processor';
     ;
 
     is
-        $result->output_string(),
+        $str,
         '<root><param1>PARAM1_VALUE</param1><tag1>TAG1_VALUE</tag1></root>',
         'Transform with cache enabled'
     ;
@@ -77,6 +79,8 @@ my $class = 'XML::LibXSLT::Processor';
         't/files/test1.xsl' => { param1 => "'PARAM1_VALUE'" }
     );
     my $new_time = $result->stylesheet_created();
+    my $str = $result->output_string();
+    chomp $str;
 
     isnt
         $old_time,
@@ -85,7 +89,7 @@ my $class = 'XML::LibXSLT::Processor';
     ;
 
     is
-        $result->output_string(),
+        $str,
         '<root><param1>PARAM1_VALUE</param1><tag1>TAG1_VALUE</tag1></root>',
         'Transform with cache disabled'
     ;
@@ -98,9 +102,11 @@ my $class = 'XML::LibXSLT::Processor';
         't/files/multi-transform1.xsl' => { pass => "1" },
         't/files/multi-transform2.xsl' => { pass => "2" },
     );
+    my $str = $result->output_string();
+    chomp $str;
 
     is
-        $result->output_string(),
+        $str,
         '<root><prev_pass>1</prev_pass><pass2>2</pass2></root>',
         'Multi-transform'
     ;

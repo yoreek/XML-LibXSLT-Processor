@@ -21,11 +21,13 @@ my $class = 'XML::LibXSLT::Processor';
     my $result = $xsltproc->transform('t/files/test1.xml',
         't/files/test1.xsl' => { param1 => "'PARAM1_VALUE'" }
     );
+    my $str = $result->output_string();
+    chomp $str;
 
     $xsltproc = undef;
 
     is
-        $result->output_string(),
+        $str,
         '<root><param1>PARAM1_VALUE</param1><tag1>TAG1_VALUE</tag1></root>'
     ;
 }
