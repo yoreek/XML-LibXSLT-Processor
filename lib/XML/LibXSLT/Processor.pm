@@ -216,6 +216,8 @@ XML document may be specified as an XML::LibXML::Document object, a file name or
 
 Stylesheet file name.
 
+=back
+
 =head1 XSLT FUNCTIONS
 
 The namespace for XSLT functions is "http://xsltproc.org/xslt/string".
@@ -233,11 +235,15 @@ Returns a string created by concatenating the string arguments and using the sep
 
 =over
 
+=back
+
 =head2 str:uc(string)
 
 Converts the string argument to upper-case.
 
 =over
+
+=back
 
 =head2 str:lc(string)
 
@@ -245,11 +251,15 @@ Converts the string argument to lower-case.
 
 =over
 
+=back
+
 =head2 str:trim(string)
 
 Removes whitespaces and other predefined characters (\t, \r, \n) from both sides of a string.
 
 =over
+
+=back
 
 =head2 str:ltrim(string)
 
