@@ -17,7 +17,7 @@ my $xsltproc = XML::LibXSLT::Processor->new();
 
     is
         $str,
-        '<root><join_one_arg>str1</join_one_arg><join_two_args>str1,str2</join_two_args><join_node_set>str3</join_node_set><join_mix>str1,str3,str4,str5,str6</join_mix></root>',
+        '<root><join_one_arg>str1</join_one_arg><join_two_args>str1,str2</join_two_args><join_node_set>str3,str4,str5</join_node_set><join_mix>str1,str3,str4,str5,str6</join_mix></root>',
         'Check "join" function'
     ;
 }
