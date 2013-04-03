@@ -7,7 +7,7 @@ use warnings;
 
 use XML::LibXML;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 require XSLoader;
 XSLoader::load('XML::LibXSLT::Processor', $VERSION);
@@ -190,13 +190,16 @@ This option sets the number of repeats transformations.
 =head2 transform(xml, stylesheet => \%params, stylesheet => \%params, ...)
 
     my $xml = XML::LibXML->load_xml(location => 'foo.xml');
-    my $result = $xsltproc->transform($xml, 'bar.xsl' => { param => 1 });
+    my $result = $xsltproc->transform($xml, 'bar.xsl');
     print $result->output_string();
 
     my $result = $xsltproc->transform('foo.xml', 'bar.xsl' => { param => 1 });
     print $result->output_string();
 
     my $result = $xsltproc->transform('<root/>', 'bar.xsl' => { param => 1 });
+    print $result->output_string();
+
+    my $result = $xsltproc->transform('<root/>', 'bar.xsl' => { param => 1 }, 'bar.xsl' => { param => 2 });
     print $result->output_string();
 
 Transforms the passed in XML document, and returns XML::LibXSLT::Processor::Result.
@@ -212,6 +215,55 @@ XML document may be specified as an XML::LibXML::Document object, a file name or
 =item * B<stylesheet>
 
 Stylesheet file name.
+
+=head1 XSLT FUNCTIONS
+
+The namespace for XSLT functions is "http://xsltproc.org/xslt/string".
+
+=head2 str:join((node-set|string), ..., sep)
+
+Returns a string created by concatenating the string arguments and using the sep argument as the separator.
+
+    Example: str:join('str1', 'str2', ' ')
+    Result: 'str1 str2'
+
+    Example: str:join('str1', /root/string, 'str4', ', ')
+    XML: <root><string>str2</string><string>str3</string></root>
+    Result: 'str1, str2, str3, str4'
+
+=over
+
+=head2 str:uc(string)
+
+Converts the string argument to upper-case.
+
+=over
+
+=head2 str:lc(string)
+
+Converts the string argument to lower-case.
+
+=over
+
+=head2 str:trim(string)
+
+Removes whitespaces and other predefined characters (\t, \r, \n) from both sides of a string.
+
+=over
+
+=head2 str:ltrim(string)
+
+Removes whitespaces and other predefined characters (\t, \r, \n) from the left side of a string.
+
+=over
+
+=back
+
+=head2 str:rtrim(string)
+
+Removes whitespaces and other predefined characters (\t, \r, \n) from the right side of a string.
+
+=over
 
 =back
 

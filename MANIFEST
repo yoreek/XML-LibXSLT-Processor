@@ -29,9 +29,14 @@ README
 t/00-load.t
 t/01-transform.t
 t/02-destroy-processor-when-result-is-using.t
+t/03-extension.t
+t/files/case.xsl
+t/files/join.xml
+t/files/join.xsl
 t/files/multi-transform1.xsl
 t/files/multi-transform2.xsl
 t/files/profiler.xsl
 t/files/test1.xml
 t/files/test1.xsl
+t/files/trim.xsl
 typemap

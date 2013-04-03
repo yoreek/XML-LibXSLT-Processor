@@ -16,7 +16,7 @@ use Symbol;
 use File::Spec;
 use Cwd;
 
-our (%PARAMS, $DEBUG, %CONFIG);
+our (%PARAMS, $DEBUG, %CONFIG, $is_Win32);
 
 WriteMakefile(
     NAME          => 'XML::LibXSLT::Processor',
@@ -68,7 +68,7 @@ sub build_libxsltp {
     close $fh;
 
     my %vars;
-    @vars{qw(LIBXSLT_CFLAGS LIBXSLT_LIBS THREAD_LIBS OPENSSL_LIBS)} = ();
+    @vars{qw(LIBXSLT_CFLAGS LIBXSLT_LIBS THREAD_LIBS OPENSSL_LIBS GLIB_CFLAGS GLIB_LIBS)} = ();
     foreach my $line (split /[\n\r]+/, $makefile) {
         if ($line =~ /^(\w+)\s*=\s*(.*)/) {
             my ($name, $value) = ($1, $2);
@@ -77,8 +77,8 @@ sub build_libxsltp {
         }
     }
 
-    $CONFIG{LIBS} = join(' ', grep { $_ } ($CONFIG{LIBS}, @vars{qw( LIBXSLT_LIBS THREAD_LIBS OPENSSL_LIBS )}));
-    $CONFIG{INC}  = join(' ', grep { $_ } ($CONFIG{INC}, @vars{qw( LIBXSLT_CFLAGS )}, "-I$libxsltp_path"));
+    $CONFIG{LIBS} = join(' ', grep { $_ } ($CONFIG{LIBS}, @vars{qw( LIBXSLT_LIBS THREAD_LIBS OPENSSL_LIBS GLIB_LIBS )}));
+    $CONFIG{INC}  = join(' ', grep { $_ } ($CONFIG{INC}, @vars{qw( LIBXSLT_CFLAGS GLIB_CFLAGS )}, "-I$libxsltp_path"));
 
     $CONFIG{OBJECT} = "Processor.o $libxsltp_build/libxsltp.a";
 }
@@ -97,4 +97,6 @@ sub parse_params {
 
     # switch Debugging messages on
     $DEBUG = delete $PARAMS{DEBUG};
+
+    $is_Win32 = ($^O =~ /Win32/);
 }
