@@ -26,7 +26,7 @@ WriteMakefile(
     LICENSE       => "perl",
     PREREQ_PM     => {
         'XML::LibXML'  => 1.62,
-        'XML::LibXML'  => 0,
+        'Test::More'   => 0,
     },
     get_config(),
 );
