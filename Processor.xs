@@ -322,11 +322,72 @@ Processor_close_handler(void *fh)
     return 1;
 }
 
+void
+Processor_error_handler(void *ctxt, int log_level, const char *func, int line, const char *msg, ...)
+{
+    va_list  args;
+    SV      *saved_error = (SV *) ctxt;
+    char    tmp[512];
+
+    if (msg[0] == '\0') {
+        return;
+    }
+
+    va_start(args, msg);
+    (void) vsnprintf(tmp, sizeof(tmp), msg, args);
+    va_end(args);
+
+    if (saved_error == NULL) {
+        warn("%s", tmp);
+    }
+    else {
+        sv_catpv(saved_error, tmp);
+    }
+}
+
+SV *
+Processor_init_error(void)
+{
+    SV *saved_error = sv_2mortal( newSVpv("", 0) );
+    xsltp_log_init(saved_error, Processor_error_handler);
+    return saved_error;
+}
+
+void
+Processor_reset_error(void)
+{
+    xsltp_log_init(NULL, Processor_error_handler);
+}
+
+void
+Processor_report_error(const char *error)
+{
+    Processor_reset_error();
+
+    if (error != NULL && error[0] != '\0') {
+        warn("%s", error);
+    }
+}
+
+void
+Processor_report_error_and_croak(const char *error)
+{
+    Processor_reset_error();
+
+    if (error != NULL && error[0] != '\0') {
+        croak("%s", error);
+    }
+    else {
+        croak("");
+    }
+}
+
 MODULE = XML::LibXSLT::Processor PACKAGE = XML::LibXSLT::Processor
 
 PROTOTYPES: DISABLE
 
 BOOT:
+    xsltp_log_init(NULL, Processor_error_handler);
     xsltp_global_init();
 
 void
@@ -429,21 +490,25 @@ transform(processor, xml, ...)
         HV                    *hv;
         xmlDocPtr              xml_doc, tmp_doc = NULL;
         xsltp_result_t        *result;
+        SV                    *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         /* parse parameters */
         if (items < 3) {
-            croak("Not enough parameters in transform()");
+            Processor_report_error_and_croak("Not enough parameters in transform()");
         }
         if (items > (XSLTP_MAX_TRANSFORMATIONS * 2 + 2)) {
-            croak("Too many parameters in transform()");
+            Processor_report_error_and_croak("Too many parameters in transform()");
         }
 
         if (xml == NULL || xml == &PL_sv_undef) {
-            croak("XML document is undefined");
+            Processor_report_error_and_croak("XML document is undefined");
         }
         if (sv_derived_from(xml, "XML::LibXML::Node")) {
             xml_doc = (xmlDocPtr) x_PmmSvNode(xml);
             if (xml_doc == NULL) {
+                Processor_reset_error();
                 XSRETURN_UNDEF;
             }
         }
@@ -453,14 +518,14 @@ transform(processor, xml, ...)
                 /* string */
                 xml_doc = tmp_doc = xmlReadMemory(buf, buf_len, "noname.xml", NULL, 0);
                 if (xml_doc == NULL) {
-                    croak("Failed to parse XML document\n");
+                    Processor_report_error_and_croak( SvPV_nolen(saved_error) );
                 }
             }
             else {
                 /* file */
                 xml_doc = tmp_doc = xmlParseFile(buf);
                 if (xml_doc == NULL) {
-                    croak("Failed to parse XML document\n");
+                    Processor_report_error_and_croak( SvPV_nolen(saved_error) );
                 }
             }
         }
@@ -474,18 +539,18 @@ transform(processor, xml, ...)
                 params = ST(i + 1);
                 if (SvTYPE(params) != SVt_NULL) {
                     if (!SvROK(params)) {
-                        croak("Parameter is not reference\n");
+                        Processor_report_error_and_croak("Parameter is not reference\n");
                     }
 
                     hv  = (HV *) SvRV(params);
                     if (SvTYPE(hv) != SVt_PVHV) {
-                        croak("Parameter is not hash reference\n");
+                        Processor_report_error_and_croak("Parameter is not hash reference\n");
                     }
 
                     len = HvUSEDKEYS(hv);
                     if (len > 0) {
                         if (len > (XSLTP_MAX_TRANSFORMATIONS_PARAMS - 1)) {
-                            croak("Too many parameters in transform()");
+                            Processor_report_error_and_croak("Too many parameters in transform()");
                         }
 
                         hv_iterinit(hv);
@@ -508,18 +573,20 @@ transform(processor, xml, ...)
         }
 
         if (result == NULL) {
-            croak("Failed to transform\n");
+            Processor_report_error_and_croak( SvPV_nolen(saved_error) );
         }
 
         transform_result = malloc(sizeof(TransformResult));
         if (transform_result == NULL) {
             xsltp_result_destroy(result);
-            croak("Malloc error in transform()");
+            Processor_report_error_and_croak("Malloc error in transform()");
         }
 
         transform_result->result    = result;
         transform_result->processor = (void *) SvRV(ST(0));
         SvREFCNT_inc(transform_result->processor);
+
+        Processor_report_error( SvPV_nolen(saved_error) );
 
         RETVAL = transform_result;
     OUTPUT:
@@ -528,9 +595,15 @@ transform(processor, xml, ...)
 void
 clean(processor)
         xsltp_t *processor;
+    PREINIT:
+        SV      *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         xsltp_stylesheet_parser_cache_clean(processor->stylesheet_parser->stylesheet_parser_cache, processor->keys_cache);
         xsltp_document_parser_cache_clean(processor->document_parser->cache, processor->keys_cache);
+
+        Processor_report_error( SvPV_nolen(saved_error) );
 
 void
 DESTROY(processor)
@@ -551,7 +624,10 @@ output_string(transform_result)
         xmlOutputBufferPtr  output;
         const xmlChar      *encoding = NULL;
         xmlCharEncodingHandlerPtr encoder = NULL;
+        SV                 *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         result = transform_result->result;
 
         XSLT_GET_IMPORT_PTR(encoding, result->xsltp_stylesheet->stylesheet, encoding)
@@ -571,9 +647,11 @@ output_string(transform_result)
             encoder
         );
         if (xsltp_result_save(result, output) == -1) {
-            croak("Output to scalar failed");
+            Processor_report_error_and_croak("Output to scalar failed");
         }
         xmlOutputBufferClose(output);
+
+        Processor_report_error( SvPV_nolen(saved_error) );
 
         RETVAL = results;
     OUTPUT:
@@ -585,9 +663,13 @@ profiler_result(transform_result)
     PREINIT:
         xsltp_profiler_result_t *profiler_result;
         xmlDocPtr                doc_copy;
+        SV                      *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         profiler_result = transform_result->result->profiler_result;
         if (profiler_result == NULL || profiler_result->doc == NULL) {
+            Processor_report_error( SvPV_nolen(saved_error) );
             XSRETURN_UNDEF;
         }
 
@@ -597,6 +679,8 @@ profiler_result(transform_result)
         }
 
         RETVAL = x_PmmNodeToSv((xmlNodePtr) doc_copy, NULL);
+
+        Processor_report_error( SvPV_nolen(saved_error) );
     OUTPUT:
         RETVAL
 
@@ -614,7 +698,10 @@ output_fh(transform_result, fh)
         SV                        *obj;
         GV                        *gv = (GV *)fh;
         IO                        *io = GvIO(gv);
+        SV                        *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         result = transform_result->result;
 
         XSLT_GET_IMPORT_PTR(encoding, result->xsltp_stylesheet->stylesheet, encoding)
@@ -651,10 +738,12 @@ output_fh(transform_result, fh)
         }
 
         if (xsltp_result_save(result, output) == -1) {
-            croak("Output to scalar failed");
+            Processor_report_error_and_croak( SvPV_nolen(saved_error) );
         }
 
         xmlOutputBufferClose(output);
+
+        Processor_report_error( SvPV_nolen(saved_error) );
 
 void
 output_file(transform_result, filename)
@@ -662,12 +751,17 @@ output_file(transform_result, filename)
         char               *filename;
     PREINIT:
         xsltp_result_t     *result;
+        SV                 *saved_error;
     CODE:
+        saved_error = Processor_init_error();
+
         result = transform_result->result;
 
         if (xsltp_result_save_to_file(result, filename) == -1) {
-            croak("Output to file failed");
+            Processor_report_error_and_croak( SvPV_nolen(saved_error) );
         }
+
+        Processor_report_error( SvPV_nolen(saved_error) );
 
 SV *
 stylesheet_created(transform_result)
