@@ -7,7 +7,7 @@ use warnings;
 
 use XML::LibXML;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 require XSLoader;
 XSLoader::load('XML::LibXSLT::Processor', $VERSION);

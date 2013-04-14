@@ -10,6 +10,18 @@
 
 #include <libxslt/imports.h>
 
+#ifndef MUTABLE_PTR
+#if defined(__GNUC__) && !defined(PERL_GCC_BRACE_GROUPS_FORBIDDEN)
+#  define MUTABLE_PTR(p) ({ void *_p = (p); _p; })
+#else
+#  define MUTABLE_PTR(p) ((void *) (p))
+#endif
+#endif
+
+#ifndef MUTABLE_SV
+#define MUTABLE_SV(p)   ((SV *)MUTABLE_PTR(p))
+#endif
+
 struct _TransformResult {
     SV             *processor;
     xsltp_result_t *result;
